@@ -1187,10 +1187,9 @@ var AnimationSession = function AnimationSession(playable, targets) {
 
     this.animEvents = [];
 
-    //yiwang blend related==========================================================
-    this.blendable = null;
-    this.blendDOF = {}; 
-    this.blendWeights = {};
+    //yiwang blend related========================================================== 
+    this.blendables = {}; 
+    this.blendWeights = {}; 
 
     // ontimer function for playback
     var self = this; 
@@ -1241,12 +1240,11 @@ AnimationSession.app = null;
 
 //yiwang blend related==========================================================
 AnimationSession.prototype.setBlend = function(blendValue, weight, curveName){
-    if(blendValue instanceof AnimationClip){
-        this.blendable = blendValue;
-        if(!curveName || curveName === "")
-            this.blendWeights["__default__"] = weight;
-        else
-            this.blendWeights[curveName] = weight;
+    if(blendValue instanceof AnimationClip){ 
+        if(!curveName || curveName === "") 
+            curveName = "__default__"; 
+        this.blendables[curveName] = blendValue;
+        this.blendWeights[curveName] = weight; 
         return;
     }
 
@@ -1263,18 +1261,16 @@ AnimationSession.prototype.setBlend = function(blendValue, weight, curveName){
         return;  
 
     this.blendWeights[curveName] = weight;  
-    this.blendDOF[curveName] = new AnimationKeyable(keyType, 0, blendValue); 
+    this.blendables[curveName] = new AnimationKeyable(keyType, 0, blendValue); 
 };
 
 AnimationSession.prototype.unsetBlend = function(curveName) {
-    if(!curveName || curveName === "") { //remove all blend
-        this.blendable = null;
-        this.blendWeights["__default__"] = 0; 
-        return;
-    } 
-    //unset blendvalue of a single DOF==================================
-    if(this.blendDOF[curveName]) {
-        delete this.blendDOF[curveName];
+    if(!curveName || curveName === "") 
+        curveName = "__default__"; 
+
+    //unset blendvalue 
+    if(this.blendables[curveName]) {
+        delete this.blendables[curveName];
         delete this.blendWeights[curveName];
     } 
 };
@@ -1416,22 +1412,26 @@ AnimationSession.prototype.updateToTarget = function (input) {
 AnimationSession.prototype.showAt = function (time, fadeDir, fadeBegTime, fadeEndTime, fadeTime) {
     var input = this.playable.eval(time); 
     //yiwang blend related==========================================================
-    if(this.blendable && this.blendable instanceof AnimationClip){
-        var blendInput = this.blendable.eval(this.accTime%this.blendable.duration); 
-        if(typeof this.blendWeights["__default__"] === "number") { 
-            input = AnimationClipSnapshot.linearBlend(input, blendInput, this.blendWeights["__default__"]);  
+    //blend animations first
+    var blendableNames = Object.keys(this.blendables);
+    for (var i = 0; i < blendableNames.length; i ++) {
+        var bname = blendableNames[i];
+        var p = this.blendWeights[bname];
+        var blendClip = this.blendables[bname];
+        if(blendClip && (blendClip instanceof AnimationClip) && (typeof p === "number")) {
+            var blendInput = blendClip.eval(this.accTime%blendClip.duration);  
+            input = AnimationClipSnapshot.linearBlend(input, blendInput, p); 
         }
-    }
-    //on top, check custom bones
-    var dofNames = Object.keys(this.blendDOF);
-    for (var i = 0; i < dofNames.length; i ++) {
-        var cname = dofNames[i];
+    } 
+    //blend custom bone second 
+    for (var i = 0; i < blendableNames.length; i ++) {
+        var cname = blendableNames[i];
         var p = this.blendWeights[cname];
-        var blendkey = this.blendDOF[cname];
-        if (input.curveKeyable[cname] && blendkey) { //only blend if exists
-            var resKey = AnimationKeyable.linearBlend(input.curveKeyable[cname], blendkey, p);
-            input.curveKeyable[cname] = resKey;
-        } 
+        var blendkey = this.blendables[cname];
+        if(!blendkey || !input.curveKeyable[cname] || (blendkey instanceof AnimationClip))
+            continue; 
+        var resKey = AnimationKeyable.linearBlend(input.curveKeyable[cname], blendkey, p);
+        input.curveKeyable[cname] = resKey;
     } 
     
     if(fadeDir === 0 || fadeTime < fadeBegTime || fadeTime > fadeEndTime)
