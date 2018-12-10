@@ -1,6 +1,10 @@
+//1. get rid of keys
+//2. get rid of new
+//3. cache prev frame idx
+
 // *===============================================================================================================
 // * class AnimationKeyable
-// *
+// * 
 // *===============================================================================================================
 var AnimationKeyableType = { NUM: 0, VEC: 1, QUAT: 2 };
 var AnimationKeyable = function AnimationKeyable(type, time, value) {
