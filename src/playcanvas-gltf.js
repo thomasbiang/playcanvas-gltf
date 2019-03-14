@@ -189,9 +189,7 @@
                             outTangent = values[3 * i + 2];
                         }
 
-                        keyable = new AnimationKeyable(keyType, time, value);
-                        keyable.inTangent = inTangent;
-                        keyable.outTangent = outTangent;
+                        keyable = AnimationKey.newAnimationKey(keyType, time, value, inTangent, outTangent); 
                         keyables.push(keyable);
                     }
                 } else {
@@ -204,7 +202,7 @@
                         else // AnimationKeyableType.NUM
                             value = values[i];
 
-                        keyable = new AnimationKeyable(keyType, time, value);
+                        keyable = AnimationKey.newAnimationKey(keyType, time, value);
                         keyables.push(keyable);
                     }
                 }

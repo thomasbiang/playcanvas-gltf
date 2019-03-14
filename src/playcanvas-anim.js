@@ -1,210 +1,21 @@
-// *===============================================================================================================
-// * class AnimationKeyable
-// *
-// *===============================================================================================================
-/**
- * @enum {number}
- */
 var AnimationKeyableType = { NUM: 0, VEC: 1, QUAT: 2 };
 
-/**
- * @constructor
- * @param {AnimationKeyableType} [type]
- * @param {number} [time]
- * @param {BlendValue} [value]
- */
-
-var AnimationKeyable = function (type, time, value) {
-    this.init(type, time, value);
-};
-
-/**
- * @param {AnimationKeyableType} [type]
- * @param {number} [time]
- * @param {BlendValue} [value]
- * @returns {AnimationKeyable}
- */
-
-AnimationKeyable.prototype.init = function (type, time, value) {
-    this.type = type || AnimationKeyableType.NUM;
-    this.time = time || 0;
-    if (value)
-        this.value = value;
-    else {
-        switch (type) {
-            case AnimationKeyableType.NUM: this.value = 0; break;
-            case AnimationKeyableType.VEC: this.value = new pc.Vec3(); break;
-            case AnimationKeyableType.QUAT: this.value = new pc.Quat(); break;
-        }
+var AnimationKey = function () {}; 
+AnimationKey.newAnimationKey = function (type, time, value, inTangent, outTangent) {
+    var key;
+    switch (type){
+        case AnimationKeyableType.NUM: key = new AnimationKeyNum(time, value); break;
+        case AnimationKeyableType.VEC: key = new AnimationKeyVec(time, value); break;
+        case AnimationKeyableType.QUAT: key = new AnimationKeyQuat(time, value); break;
     }
-    return this;
-};
+    if (typeof inTangent !== 'undefined')
+        key.inTangent = inTangent;
+    if (typeof outTangent !== 'undefined')
+        key.outTangent = outTangent;
+    return key;
+}; 
 
-/**
- * @param {AnimationKeyable} keyable
- * @returns {AnimationKeyable}
- */
-
-AnimationKeyable.prototype.copy = function (keyable) {
-    if (!keyable)
-        return this;
-
-    var value = keyable.value;
-    if (keyable.value instanceof pc.Vec3 || keyable.value instanceof pc.Quat)
-        value = keyable.value.clone();
-
-    this.init(keyable.type, keyable.time, value);
-    if(keyable.inTangent)
-        this.inTangent = keyable.inTangent.clone();
-    if(keyable.outTangent)
-        this.outTangent = keyable.outTangent.clone();
-    return this;
-};
-
-AnimationKeyable.prototype.clone = function () {
-    var value = this.value;
-    if (this.value instanceof pc.Vec3 || this.value instanceof pc.Quat)
-        value = this.value.clone();
-    var cloned = new AnimationKeyable(this.type, this.time, value);
-    if(this.inTangent)
-        cloned.inTangent = this.inTangent.clone();
-    if(this.outTangent)
-        cloned.outTangent = this.outTangent.clone();
-    return cloned;
-};
-
-/**
- * @param {AnimationKeyable} keyable1
- * @param {AnimationKeyable} keyable2
- * @returns {AnimationKeyable}
- * @summary
- * static function for lack of overloaded operator
- * return keyable1 + keyable2
- */
-
-AnimationKeyable.sum = function (keyable1, keyable2) {
-    if (!keyable1 || !keyable2 || keyable1.type != keyable2.type)
-        return null;
-
-    var resKeyable = new AnimationKeyable(keyable1.type);
-    switch (keyable1.type) {
-        case AnimationKeyableType.NUM: resKeyable.value = keyable1.value + keyable2.value; break;
-        case AnimationKeyableType.VEC: resKeyable.value.add2(keyable1.value, keyable2.value); break;
-        case AnimationKeyableType.QUAT:
-            resKeyable.value.x = keyable1.value.x + keyable2.value.x;
-            resKeyable.value.y = keyable1.value.y + keyable2.value.y;
-            resKeyable.value.z = keyable1.value.z + keyable2.value.z;
-            resKeyable.value.w = keyable1.value.w + keyable2.value.w; break;
-    }
-    return resKeyable;
-};
-
-/**
- * @param {AnimationKeyable} keyable1
- * @param {AnimationKeyable} keyable2
- * @returns {AnimationKeyable}
- * @summary return keyable1 - keyable2
- */
-
-AnimationKeyable.minus = function (keyable1, keyable2) {
-    if (!keyable1 || !keyable2 || keyable1.type != keyable2.type)
-        return null;
-
-    var resKeyable = new AnimationKeyable(keyable1.type);
-    switch (keyable1.type) {
-        case AnimationKeyableType.NUM: resKeyable.value = keyable1.value - keyable2.value; break;
-        case AnimationKeyableType.VEC: resKeyable.value.sub2(keyable1.value, keyable2.value); break;
-        case AnimationKeyableType.QUAT:
-            resKeyable.value.x = keyable1.value.x - keyable2.value.x;
-            resKeyable.value.y = keyable1.value.y - keyable2.value.y;
-            resKeyable.value.z = keyable1.value.z - keyable2.value.z;
-            resKeyable.value.w = keyable1.value.w - keyable2.value.w; break;
-    }
-    return resKeyable;
-};
-
-/**
- * @param {AnimationKeyable} keyable
- * @param {number} coeff
- * @returns {AnimationKeyable}
- * @summary return keyable * coeff
- */
-
-AnimationKeyable.mul = function (keyable, coeff) {
-    if (!keyable)
-        return null;
-
-    var resKeyable = new AnimationKeyable();
-    resKeyable.copy(keyable);
-    switch (keyable.type) {
-        case AnimationKeyableType.NUM: resKeyable.value *= coeff; break;
-        case AnimationKeyableType.VEC: resKeyable.value.scale(coeff); break;
-        case AnimationKeyableType.QUAT:
-            resKeyable.value.x *= coeff;
-            resKeyable.value.y *= coeff;
-            resKeyable.value.z *= coeff;
-            resKeyable.value.w *= coeff; break;
-    }
-    return resKeyable;
-};
-
-/**
- * @param {AnimationKeyable} keyable
- * @param {number} coeff
- * @returns {AnimationKeyable}
- */
-// return keyable / coeff
-AnimationKeyable.div = function (keyable, coeff) {
-    if (coeff === 0)
-        return null;
-
-    return AnimationKeyable.mul(keyable, 1 / coeff);
-};
-
-/**
- * @param {AnimationKeyable} keyable1
- * @param {AnimationKeyable} keyable2
- * @param {number} p
- * @param {AnimationKeyable} [cacheValue]
- * @returns {AnimationKeyable}
- */
-
-AnimationKeyable.linearBlend = function (keyable1, keyable2, p, cacheValue) {
-    if (!keyable1 || !keyable2 || keyable1.type !== keyable2.type)
-        return null;
-
-    var resKeyable;
-    if (cacheValue) resKeyable = cacheValue;
-    else resKeyable = new AnimationKeyable(keyable1.type);
-
-    if (p === 0) {
-        resKeyable.copy(keyable1);
-        return resKeyable;
-    }
-
-    if (p === 1) {
-        resKeyable.copy(keyable2);
-        return resKeyable;
-    }
-
-    switch (keyable1.type) {
-        case AnimationKeyableType.NUM:
-            resKeyable.value = (1 - p) * keyable1.value + p * keyable2.value; break;
-        case AnimationKeyableType.VEC:
-            resKeyable.value.lerp(keyable1.value, keyable2.value, p); break;
-        case AnimationKeyableType.QUAT:
-            resKeyable.value.slerp(keyable1.value, keyable2.value, p); break;
-    }
-    return resKeyable;
-};
-
-/**
- * @param {SingleDOF} value1
- * @param {SingleDOF} value2
- * @param {number} p
- */
-
-AnimationKeyable.linearBlendValue = function (value1, value2, p) {
+AnimationKey.linearBlendValue = function (value1, value2, p) {
     var valRes;
 
     if (typeof value1 === "number" && typeof value2 === "number") {
@@ -226,6 +37,195 @@ AnimationKeyable.linearBlendValue = function (value1, value2, p) {
     }
     return null;
 };
+
+AnimationKey.cubicHermite = function (t1, v1, t2, v2, p) {
+    // basis
+    var p2 = p * p;
+    var p3 = p2 * p;
+    var h0 = 2 * p3 - 3 * p2 + 1;
+    var h1 = -2 * p3 + 3 * p2;
+    var h2 = p3 - 2 * p2 + p;
+    var h3 = p3 - p2;
+
+    // interpolation
+    return v1 * h0 + v2 * h1 + t1 * h2 + t2 * h3;
+}; 
+//----------------------------------------------------------------------------------------------------------------- 
+var AnimationKeyNum = function (time, num) {
+    this.time = time || 0;
+    this.value = num || 0;
+};
+
+AnimationKeyNum.prototype.copy = function (keyNum) {
+    if (!keyNum)
+        return this;
+
+    this.time = keyNum.time;
+    this.value = keyNum.value;
+    return this;
+};
+
+AnimationKeyNum.prototype.clone = function () {
+     return new AnimationKeyNum(this.time, this.value);
+};
+
+AnimationKeyNum.prototype.linearBlendKey = function(key1, key2, p) { 
+    if (p === 0)
+        this.value = key1.value;
+    else if (p === 1)
+        this.value = key2.value;
+    else
+        this.value = (1 - p) * key1.value + p * key2.value;
+    return this; 
+};
+
+AnimationKeyNum.prototype.cubicHermiteKey = function (g, key1, key2, p) {  
+    this.value = AnimationKey.cubicHermite(g*key1.outTangent, key1.value, g*key2.inTangent, key2.value, p); 
+    return this;
+};
+
+AnimationKeyNum.prototype.cubicCardinalKey = function (key0, key1, key2, key3, time, tension) {  
+    if (!key1 || !key2)
+        return this; 
+
+    var p = (time - key1.time) / (key2.time - key1.time);  
+    var factor = tension * (key2.time - key1.time); 
+    var m1 = factor * (key2.value - key1.value) / (key2.time - key1.time);
+    if (key0)
+        m1 = 2 * factor * (key2.value - key0.value) / (key2.time - key0.time);
+
+    var m2 = factor * (key2.value - key1.value) / (key2.time - key1.time);
+    if (key3)
+        m2 = 2 * factor * (key3.value - key1.value) / (key3.time - key1.time);
+
+    this.value = AnimationKey.cubicHermite(m1, key1.value, m2, key2.value, p);
+    return this;
+};
+
+
+Object.defineProperty(AnimationKeyNum.prototype, 'type', {
+    get: function () {
+        return AnimationKeyableType.NUM;
+    }
+});
+
+//-----------------------------------------------------------------------------------------------------------------
+var AnimationKeyVec = function (time, vec) {
+    this.time = time || 0;
+    this.value = vec || new pc.Vec3();
+};
+
+AnimationKeyVec.prototype.copy = function (keyVec) {
+    if (!keyVec)
+        return this;
+
+    this.time = keyVec.time;
+    this.value.copy(keyVec.value);
+    return this;
+};
+
+AnimationKeyVec.prototype.clone = function () { 
+    return new AnimationKeyVec(this.time, this.value.clone());
+};
+
+AnimationKeyVec.prototype.linearBlendKey = function(key1, key2, p) { 
+    if (p === 0)
+        this.value.copy(key1.value);
+    else if (p === 1)
+        this.value.copy(key2.value); 
+    else
+        this.value.lerp(key1.value, key2.value, p);
+
+    return this; 
+};
+
+AnimationKeyVec.prototype.cubicHermiteKey = function (g, key1, key2, p) {
+    this.value.x = AnimationKey.cubicHermite(g * key1.outTangent.x, key1.value.x, g * key2.inTangent.x, key2.value.x, p);
+    this.value.y = AnimationKey.cubicHermite(g * key1.outTangent.y, key1.value.y, g * key2.inTangent.y, key2.value.y, p);
+    this.value.z = AnimationKey.cubicHermite(g * key1.outTangent.z, key1.value.z, g * key2.inTangent.z, key2.value.z, p);
+    return this;
+};
+
+AnimationKeyVec.cubicCardinalKey = function (key0, key1, key2, key3, time, tension) {
+    var m1, m2;
+
+    if (!key1 || !key2)
+        return this; 
+
+    var p = (time - key1.time) / (key2.time - key1.time);
+    var factor = tension * (key2.time - key1.time); 
+    resKey.value.copy(key1.value);
+
+    var props = ["x", "y", "z", "w"];
+    for (var i = 0; i < props.length; i ++) {
+        var pr = props[i];
+        if (this.value[pr] === undefined)
+            continue;
+
+        m1 = factor * (key2.value[pr] - key1.value[pr]) / (key2.time - key1.time);
+        if (key0)
+            m1 = 2 * factor * (key2.value[pr] - key0.value[pr]) / (key2.time - key0.time);
+
+        m2 = factor * (key2.value[pr] - key1.value[pr]) / (key2.time - key1.time);
+        if (key3)
+            m2 = 2 * factor * (key3.value[pr] - key1.value[pr]) / (key3.time - key1.time);
+
+        this.value[pr] = AnimationKey.cubicHermite(m1, key1.value[pr], m2, key2.value[pr], p);
+    } 
+    return this;
+};
+
+Object.defineProperty(AnimationKeyVec.prototype, 'type', {
+    get: function () {
+        return AnimationKeyableType.VEC;
+    }
+});
+
+
+//-----------------------------------------------------------------------------------------------------------------
+var AnimationKeyQuat = function (time, quat) {
+    this.time = time || 0;
+    this.value = quat || new pc.Quat();
+};
+
+AnimationKeyQuat.prototype.copy = function (keyQuat) {
+    if (!keyQuat)
+        return this;
+
+    this.time = keyQuat.time;
+    this.value.copy(keyQuat.value);
+    return this;
+};
+
+AnimationKeyQuat.prototype.clone = function () {
+    return new AnimationKeyQuat(this.time, this.value.clone());
+};
+
+AnimationKeyQuat.prototype.linearBlendKey = function(key1, key2, p) {
+    if (p === 0)
+        this.value.copy(key1.value);
+    else if (p === 1)
+        this.value.copy(key2.value); 
+    else
+        this.value.slerp(key1.value, key2.value, p);
+
+    return this; 
+};
+
+AnimationKeyQuat.prototype.cubicHermiteKey = function (g, key1, key2, p) {
+    this.value.w = AnimationKey.cubicHermite(g * key1.outTangent.w, key1.value.w, g * key2.inTangent.w, key2.value.w, p);
+    this.value.x = AnimationKey.cubicHermite(g * key1.outTangent.x, key1.value.x, g * key2.inTangent.x, key2.value.x, p);
+    this.value.y = AnimationKey.cubicHermite(g * key1.outTangent.y, key1.value.y, g * key2.inTangent.y, key2.value.y, p);
+    this.value.z = AnimationKey.cubicHermite(g * key1.outTangent.z, key1.value.z, g * key2.inTangent.z, key2.value.z, p);
+    this.value.normalize();
+};
+
+Object.defineProperty(AnimationKeyQuat.prototype, 'type', {
+    get: function () {
+        return AnimationKeyableType.QUAT;
+    }
+});
+
 
 // *===============================================================================================================
 // * class AnimationTarget: organize target into an object, this allows 1-Curve-Multiple-Targets
@@ -303,11 +303,11 @@ AnimationTarget.prototype.blendToTarget = function (value, p) {
     // p*cur + (1-p)*prev
     if (this.targetNode && this.targetNode[this.targetPath] !== undefined) {
         var blendValue;
-        if (this.targetProp && this.targetProp in this.targetNode[this.targetPath]) {
-            blendValue = AnimationKeyable.linearBlendValue(this.targetNode[this.targetPath][this.targetProp], value, p);
+        if (this.targetProp && this.targetProp in this.targetNode[this.targetPath]) { 
+            blendValue = AnimationKey.linearBlendValue(this.targetNode[this.targetPath][this.targetProp], value, p);//0311 
             this.targetNode[this.targetPath][this.targetProp] = blendValue;
         } else {
-            blendValue = AnimationKeyable.linearBlendValue(this.targetNode[this.targetPath], value, p);
+            blendValue = AnimationKey.linearBlendValue(this.targetNode[this.targetPath], value, p);//0311
             this.targetNode[this.targetPath] = blendValue;
         }
 
@@ -515,10 +515,8 @@ AnimationCurve.prototype.copy = function (curve) {
         this.animTargets.push(curve.animTargets[i].clone());
 
     this.animKeys = [];
-    for (i = 0; i < curve.animKeys.length; i ++) {
-        var key = new AnimationKeyable();
-        key.copy(curve.animKeys[i]);
-        this.animKeys.push(key);
+    for (i = 0; i < curve.animKeys.length; i ++) { 
+        this.animKeys.push(curve.animKeys[i].clone());
     }
     return this;
 };
@@ -714,17 +712,17 @@ AnimationCurve.prototype.insertKey = function (type, time, value) {
         return;
     }
 
-    var keyable = new AnimationKeyable(type, time, value);
+    var key = AnimationKey.newAnimationKey(type, time, value);//0311
 
     // append at the back
     if (pos >= this.animKeys.length) {
-        this.animKeys.push(keyable);
+        this.animKeys.push(key);
         this.duration = time;
         return;
     }
 
     // insert at pos
-    this.animKeys.splice(pos, 0, keyable);
+    this.animKeys.splice(pos, 0, key);
 };
 
 // 10/15
@@ -807,7 +805,7 @@ AnimationCurve.prototype.getSubCurve = function (tmBeg, tmEnd) {
             if (tmFirst < 0)
                 tmFirst = this.animKeys[i].time;
 
-            var key = new AnimationKeyable().copy(this.animKeys[i]);
+            var key = this.animKeys[i].clone();
             key.time -= tmFirst;
             subCurve.animKeys.push(key);
         }
@@ -827,11 +825,11 @@ AnimationCurve.prototype.evalLINEAR = function (time) {
         return null;
 
     // 1. find the interval [key1, key2]
-    var resKey = new AnimationKeyable();
+    var resKey;
     var key1, key2;
     for (var i = 0; i < this.animKeys.length; i ++) {
         if (this.animKeys[i].time === time) {
-            resKey.copy(this.animKeys[i]);
+            resKey = this.animKeys[i].clone();//0311
             return resKey;
         }
 
@@ -844,15 +842,16 @@ AnimationCurve.prototype.evalLINEAR = function (time) {
 
     // 2. only found one boundary
     if (!key1 || !key2) {
-        resKey.copy(key1 ? key1 : key2);
+        resKey = key1 ? key1.clone() : key2.clone();
+        //resKey.copy(key1 ? key1 : key2); //0311
         resKey.time = time;
         return resKey;
     }
 
     // 3. both found then interpolate
     var p = (time - key1.time) / (key2.time - key1.time);
-    resKey = AnimationKeyable.linearBlend(key1, key2, p);
-    resKey.time = time;
+    resKey = AnimaitonKey.newAnimationKey(this.keyableType, time);
+    resKey.linearBlendKey(key1, key2, p);
     return resKey;
 };
 
@@ -913,7 +912,7 @@ AnimationCurve.prototype.evalLINEAR_cache = function (time, cacheKeyIdx, cacheVa
 
     // 3. both found then interpolate
     var p = (time - key1.time) / (key2.time - key1.time);
-    resKey = AnimationKeyable.linearBlend(key1, key2, p, resKey);
+    resKey.linearBlendKey(key1, key2, p);
     resKey.time = time;
     resKey._cacheKeyIdx = i;
     return resKey;
@@ -935,8 +934,8 @@ AnimationCurve.prototype.evalSTEP = function (time) {
         else
             break;
     }
-    var resKey = new AnimationKeyable();
-    resKey.copy(key);
+    var resKey = key.clone();//new AnimationKeyable();
+    //resKey.copy(key); 0311
     resKey.time = time;
     return resKey;
 };
@@ -975,7 +974,7 @@ AnimationCurve.prototype.evalSTEP_cache = function (time, cacheKeyIdx, cacheValu
             break;
         }
     }
-    var resKey = cacheValue;// new AnimationKeyable();
+    var resKey = cacheValue;
     resKey.copy(key);
     resKey.time = time;
     resKey._cacheKeyIdx = i;
@@ -994,11 +993,12 @@ AnimationCurve.prototype.evalCUBIC = function (time) {
     // 1. find interval [key1, key2] enclosing time
     // key0, key3 are for tangent computation
     var key0, key1, key2, key3;
-    var resKey = new AnimationKeyable();
+    var resKey;//0311 = new AnimationKeyable();
     for (var i = 0; i < this.animKeys.length; i ++) {
         if (this.animKeys[i].time === time) {
-            resKey.copy(this.animKeys[i]);
-            return resKey;
+            //0311 resKey.copy(this.animKeys[i]);
+            //return resKey;
+            return this.animKeys[i].clone();
         }
         if (this.animKeys[i].time > time) {
             key2 = this.animKeys[i];
@@ -1009,19 +1009,20 @@ AnimationCurve.prototype.evalCUBIC = function (time) {
         key1 = this.animKeys[i];
         if (i - 1 >= 0)
             key0 = this.animKeys[i - 1];
-    }
-
+    }  
+    
     // 2. only find one boundary
     if (!key1 || !key2) {
-        resKey.copy(key1 ? key1 : key2);
+        //0311 resKey.copy(key1 ? key1 : key2);
+        resKey = key1 ? key1.clone() : key2.clone();
         resKey.time = time;
         return resKey;
     }
 
     // 3. curve interpolation
     if (key1.type == AnimationKeyableType.NUM || key1.type == AnimationKeyableType.VEC) {
-        resKey = AnimationCurve.cubicCardinal(key0, key1, key2, key3, time, this.tension);
-        resKey.time = time;
+        resKey = AnimationKey.newAnimationKey(this.keyableType, time);
+        resKey.cubicCardinalKey(key0, key1, key2, key3, time, this.tension);
         return resKey;
     }
     return null;// quaternion or combo
@@ -1093,7 +1094,7 @@ AnimationCurve.prototype.evalCUBIC_cache = function (time, cacheKeyIdx, cacheVal
 
     // 3. curve interpolation
     if (key1.type == AnimationKeyableType.NUM || key1.type == AnimationKeyableType.VEC) {
-        resKey = AnimationCurve.cubicCardinal(key0, key1, key2, key3, time, this.tension);
+        resKey.cubicCardinalKey(key0, key1, key2, key3, time, this.tension);
         resKey.time = time;
         resKey._cacheKeyIdx = i;
         return resKey;
@@ -1111,12 +1112,13 @@ AnimationCurve.prototype.evalCUBICSPLINE_GLTF = function (time) {
         return null;
 
     // 1. find the interval [key1, key2]
-    var resKey = new AnimationKeyable();
+    var resKey;//0311 = new AnimationKeyable();
     var key1, key2;
     for (var i = 0; i < this.animKeys.length; i ++) {
         if (this.animKeys[i].time === time) {
-            resKey.copy(this.animKeys[i]);
-            return resKey;
+            return this.animKeys[i].clone();
+            //0311 resKey.copy(this.animKeys[i]);
+            //return resKey;
         }
 
         if (this.animKeys[i].time > time) {
@@ -1128,7 +1130,8 @@ AnimationCurve.prototype.evalCUBICSPLINE_GLTF = function (time) {
 
     // 2. only found one boundary
     if (!key1 || !key2) {
-        resKey.copy(key1 ? key1 : key2);
+        resKey = key1 ? key1.clone() : key2.clone();
+        //0311 resKey.copy(key1 ? key1 : key2);
         resKey.time = time;
         return resKey;
     }
@@ -1136,23 +1139,9 @@ AnimationCurve.prototype.evalCUBICSPLINE_GLTF = function (time) {
     // 3. both found then interpolate
     var p = (time - key1.time) / (key2.time - key1.time);
     var g = key2.time - key1.time;
-    if (this.keyableType === AnimationKeyableType.NUM) {
-        resKey.value = AnimationCurve.cubicHermite(g * key1.outTangent, key1.value, g * key2.inTangent, key2.value, p);
-    } else if (this.keyableType === AnimationKeyableType.VEC) {
-        resKey.value.x = AnimationCurve.cubicHermite(g * key1.outTangent.x, key1.value.x, g * key2.inTangent.x, key2.value.x, p);
-        resKey.value.y = AnimationCurve.cubicHermite(g * key1.outTangent.y, key1.value.y, g * key2.inTangent.y, key2.value.y, p);
-        resKey.value.z = AnimationCurve.cubicHermite(g * key1.outTangent.z, key1.value.z, g * key2.inTangent.z, key2.value.z, p);
-    } else if (this.keyableType === AnimationKeyableType.QUAT) {
-        resKey.value.w = AnimationCurve.cubicHermite(g * key1.outTangent.w, key1.value.w, g * key2.inTangent.w, key2.value.w, p);
-        resKey.value.x = AnimationCurve.cubicHermite(g * key1.outTangent.x, key1.value.x, g * key2.inTangent.x, key2.value.x, p);
-        resKey.value.y = AnimationCurve.cubicHermite(g * key1.outTangent.y, key1.value.y, g * key2.inTangent.y, key2.value.y, p);
-        resKey.value.z = AnimationCurve.cubicHermite(g * key1.outTangent.z, key1.value.z, g * key2.inTangent.z, key2.value.z, p);
-        resKey.normalize();
-    }
-
-    resKey.time = time;
+    resKey = AnimationKey.newAnimationKey(this.keyableType, time); 
+    resKey.cubicHermiteKey(g, key1, key2, p);
     return resKey;
-
 };
 
 /**
@@ -1214,20 +1203,7 @@ AnimationCurve.prototype.evalCUBICSPLINE_GLTF_cache = function (time, cacheKeyId
     // 3. both found then interpolate
     var p = (time - key1.time) / (key2.time - key1.time);
     var g = key2.time - key1.time;
-    if (this.keyableType === AnimationKeyableType.NUM) {
-        resKey.value = AnimationCurve.cubicHermite(g * key1.outTangent, key1.value, g * key2.inTangent, key2.value, p);
-    } else if (this.keyableType === AnimationKeyableType.VEC) {
-        resKey.value.x = AnimationCurve.cubicHermite(g * key1.outTangent.x, key1.value.x, g * key2.inTangent.x, key2.value.x, p);
-        resKey.value.y = AnimationCurve.cubicHermite(g * key1.outTangent.y, key1.value.y, g * key2.inTangent.y, key2.value.y, p);
-        resKey.value.z = AnimationCurve.cubicHermite(g * key1.outTangent.z, key1.value.z, g * key2.inTangent.z, key2.value.z, p);
-    } else if (this.keyableType === AnimationKeyableType.QUAT) {
-        resKey.value.w = AnimationCurve.cubicHermite(g * key1.outTangent.w, key1.value.w, g * key2.inTangent.w, key2.value.w, p);
-        resKey.value.x = AnimationCurve.cubicHermite(g * key1.outTangent.x, key1.value.x, g * key2.inTangent.x, key2.value.x, p);
-        resKey.value.y = AnimationCurve.cubicHermite(g * key1.outTangent.y, key1.value.y, g * key2.inTangent.y, key2.value.y, p);
-        resKey.value.z = AnimationCurve.cubicHermite(g * key1.outTangent.z, key1.value.z, g * key2.inTangent.z, key2.value.z, p);
-        resKey.normalize();
-    }
-
+    resKey.cubicHermiteKey(g, key1, key2, p);
     resKey.time = time;
     resKey._cacheKeyIdx = i;
     return resKey;
@@ -1277,90 +1253,7 @@ AnimationCurve.prototype.eval = function (time) {
             return this.evalCUBICSPLINE_GLTF(time);
     }
     return null;
-};
-
-/**
- * @param {number} t1
- * @param {number} v1
- * @param {number} t2
- * @param {number} v2
- * @param {number} p
- * @returns {number}
- * @summary static method: tangent 1, value 1, tangent 2, value 2, proportion
- */
-
-AnimationCurve.cubicHermite = function (t1, v1, t2, v2, p) {
-    // basis
-    var p2 = p * p;
-    var p3 = p2 * p;
-    var h0 = 2 * p3 - 3 * p2 + 1;
-    var h1 = -2 * p3 + 3 * p2;
-    var h2 = p3 - 2 * p2 + p;
-    var h3 = p3 - p2;
-
-    // interpolation
-    return v1 * h0 + v2 * h1 + t1 * h2 + t2 * h3;
-};
-
-/**
- * @param {AnimationKeyable} key0
- * @param {AnimationKeyable} key1
- * @param {AnimationKeyable} key2
- * @param {AnimationKeyable} key3
- * @param {number} time
- * @param {number} tension
- * @param {AnimationKeyable} [cacheValue]
- * @returns {AnimationKeyable}
- * @summary static: only for num or vec
- */
-
-AnimationCurve.cubicCardinal = function (key0, key1, key2, key3, time, tension, cacheValue) {
-    var m1, m2;
-
-    if (!key1 || !key2 || key1.type != key2.type)
-        return null;
-
-    if (key1.type != AnimationKeyableType.NUM && key1.type != AnimationKeyableType.VEC)
-        return null;
-
-    var p = (time - key1.time) / (key2.time - key1.time);
-    var resKey;
-    if (cacheValue) resKey = cacheValue;
-    else resKey = new AnimationKeyable(key1.type);
-
-    // adjust for non-unit-interval
-    var factor = tension * (key2.time - key1.time);
-    if (key1.type === AnimationKeyableType.NUM) {
-        m1 = factor * (key2.value - key1.value) / (key2.time - key1.time);
-        if (key0)
-            m1 = 2 * factor * (key2.value - key0.value) / (key2.time - key0.time);
-
-        m2 = factor * (key2.value - key1.value) / (key2.time - key1.time);
-        if (key3)
-            m2 = 2 * factor * (key3.value - key1.value) / (key3.time - key1.time);
-        resKey.value = AnimationCurve.cubicHermite(m1, key1.value, m2, key2.value, p);
-    }
-
-    // each element in vector, direct x, y, z, w
-    if (key1.type === AnimationKeyableType.VEC) {
-        resKey.value = key1.value.clone();
-        var props = ["x", "y", "z", "w"];
-        for (var i = 0; i < props.length; i ++) {
-            var pr = props[i];
-            if (resKey.value[pr] === undefined)
-                continue;
-            m1 = factor * (key2.value[pr] - key1.value[pr]) / (key2.time - key1.time);
-            if (key0)
-                m1 = 2 * factor * (key2.value[pr] - key0.value[pr]) / (key2.time - key0.time);
-
-            m2 = factor * (key2.value[pr] - key1.value[pr]) / (key2.time - key1.time);
-            if (key3)
-                m2 = 2 * factor * (key3.value[pr] - key1.value[pr]) / (key3.time - key1.time);
-            resKey.value[pr] = AnimationCurve.cubicHermite(m1, key1.value[pr], m2, key2.value[pr], p);
-        }
-    }
-    return resKey;
-};
+}; 
 
 // *===============================================================================================================
 // * class AnimationClipSnapshot: animation clip slice (pose) at a particular time
@@ -1391,7 +1284,7 @@ AnimationClipSnapshot.prototype.copy = function (shot) {
     this.curveNames = [];
     for (var i = 0; i < shot.curveNames.length; i ++) {
         var cname = shot.curveNames[i];
-        this.curveKeyable[cname] = new AnimationKeyable().copy(shot.curveKeyable[cname]);
+        this.curveKeyable[cname] = shot.curveKeyable[cname].clone();//0311
         this.curveNames.push(cname);
     }
     return this;
@@ -1422,8 +1315,7 @@ AnimationClipSnapshot.linearBlend = function (shot1, shot2, p) {
     for (var i = 0; i < shot2.curveNames.length; i ++) {
         var cname = shot2.curveNames[i];
         if (shot1.curveKeyable[cname] && shot2.curveKeyable[cname]) {
-            var resKey = AnimationKeyable.linearBlend(shot1.curveKeyable[cname], shot2.curveKeyable[cname], p);
-            resShot.curveKeyable[cname] = resKey;
+            resShot.curveKeyable[cname].linearBlendKey(shot1.curveKeyable[cname], shot2.curveKeyable[cname], p);
         } else if (shot1.curveKeyable[cname])
             resShot.curveKeyable[cname] = shot1.curveKeyable[cname];
         else if (shot2.curveKeyable[cname])
@@ -1457,8 +1349,7 @@ AnimationClipSnapshot.linearBlendExceptStep = function (shot1, shot2, p, animCur
                 if (p > 0.5) resShot.curveKeyable[cname] = shot2.curveKeyable[cname];
                 else resShot.curveKeyable[cname] = shot1.curveKeyable[cname];
             } else {
-                var resKey = AnimationKeyable.linearBlend(shot1.curveKeyable[cname], shot2.curveKeyable[cname], p);
-                resShot.curveKeyable[cname] = resKey;
+                resShot.curveKeyable[cname].linearBlendKey(shot1.curveKeyable[cname], shot2.curveKeyable[cname], p);
             }
         } else if (shot1.curveKeyable[cname])
             resShot.curveKeyable[cname] = shot1.curveKeyable[cname];
@@ -1774,7 +1665,7 @@ AnimationClip.prototype.eval_cache = function (time, cacheKeyIdx, cacheValue) { 
         if (cacheKeyIdx) ki = cacheKeyIdx[curve.name];
         var kv;
         if (cacheValue) kv = cacheValue.curveKeyable[curve.name];
-        else kv = new AnimationKeyable(curve.keyableType);
+        else kv = AnimationKey.newAnimationKey(curve.keyableType, time);//0311
         var keyable = curve.eval_cache(time, ki, kv);// 0210
         if (cacheKeyIdx && keyable) cacheKeyIdx[curve.name] = keyable._cacheKeyIdx;
         snapshot.curveKeyable[curve.name] = keyable;
@@ -2087,12 +1978,12 @@ AnimationSession._allocatePlayableCache = function (playable) {
         return null;
 
     if (playable instanceof AnimationCurve) {
-        return new AnimationKeyable(playable.keyableType);
+        return AnimationKey.newAnimationKey(playable.keyableType, 0);//0311
     } else if (playable instanceof AnimationClip) {
         var snapshot = new AnimationClipSnapshot();
         for (var i = 0, len = playable.animCurves.length; i < len; i++) {
             var cname = playable.animCurves[i].name;
-            snapshot.curveKeyable[cname] = new AnimationKeyable(playable.animCurves[i].keyableType);
+            snapshot.curveKeyable[cname] = AnimationKey.newAnimationKey(playable.animCurves[i].keyableType, 0);//0311
             snapshot.curveNames.push(cname);
         }
         return snapshot;
@@ -2433,8 +2324,7 @@ AnimationSession.prototype.showAt = function (time, fadeDir, fadeBegTime, fadeEn
         var blendkey = this.blendables[cname];
         if (!blendkey || !input.curveKeyable[cname] || (blendkey instanceof AnimationClip))
             continue;
-        var resKey = AnimationKeyable.linearBlend(input.curveKeyable[cname], blendkey, p);
-        input.curveKeyable[cname] = resKey;
+        input.curveKeyable[cname].linearBlendKey(input.curveKeyable[cname], blendkey, p);
     }
 
     if (fadeDir === 0 || fadeTime < fadeBegTime || fadeTime > fadeEndTime)
