@@ -2088,7 +2088,7 @@ AnimationSession.prototype.setBlend = function (blendValue, weight, curveName){
         return;
 
     this.blendWeights[curveName] = weight;
-    this.blendables[curveName] = new AnimationKeyable(keyType, 0, blendValue);
+    this.blendables[curveName] = AnimationKey.newAnimationKey(keyType, 0, blendValue);
     this._cacheBlendValues[curveName] = null;// 1226, null if blendable is not animationclip
 };
 
@@ -2376,10 +2376,6 @@ AnimationSession.prototype.play = function (playable, animTargets) {
         this.animTargets = playable.getAnimTargets();
     else if (animTargets)
         this.animTargets = animTargets;
-
-    // reset events
-    for (i = 0; i < this.animEvents.length; i ++)
-        this.animEvents[i].triggered = false;
 
     // reset events
     for (i = 0; i < this.animEvents.length; i ++)
