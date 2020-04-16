@@ -126,7 +126,7 @@ Object.assign(window, function () {
                     curve = new AnimationCurve();
                     keyType = AnimationKeyableType.NUM;
                     curve.keyableType = keyType;
-                    curve.addTarget("model", path, i);
+                    curve.addTarget(entity, path, i);
                     if (sampler.interpolation === "CUBIC")
                         curve.type = AnimationCurveType.CUBIC;
                     else if (sampler.interpolation === "STEP")

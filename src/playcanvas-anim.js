@@ -258,6 +258,21 @@ Object.assign(window, function () {
         this.targetProp = targetProp;
     };
 
+    AnimationTarget.prototype.updateMorphTarget = function (root){
+        if(this.targetPath !== "weights" || !root || !root.model || !root.model.meshInstances || this.targetNode===root)
+            return;
+
+        var nodeName = this.targetNode.name;
+        this.targetNode = root;
+        this.targetInstanceId = -1;
+        for(var meshId = 0; meshId < root.model.meshInstances.length; ++ meshId) {
+            var meshInst = root.model.meshInstances[meshId];
+            if(meshInst && meshInst.node.name === nodeName) {
+                this.targetInstanceId = meshId;
+            }
+        }
+    };
+
     // blend related
     AnimationTarget.prototype.toString = function (){
         var str = "";
@@ -398,10 +413,16 @@ Object.assign(window, function () {
         // special wrapping for morph weights
         if (this.targetNode && this.targetPath === "weights" && this.targetNode.model) {
             var meshInstances = this.targetNode.model.meshInstances;
-            for (var m = 0; m < meshInstances.length; m++) {
-                var morphInstance = meshInstances[m].morphInstance;
-                if (!morphInstance) continue;
-                morphInstance.setWeight(this.targetProp, value);
+            if(typeof this.targetInstanceId === "number") {
+                 if(this.targetInstanceId>=0 && this.targetInstanceId < meshInstances.length &&
+                    meshInstances[this.targetInstanceId].morphInstance)
+                     meshInstances[this.targetInstanceId].morphInstance.setWeight(this.targetProp, value);
+            } else { 
+                for (var m = 0; m < meshInstances.length; m++) {
+                    var morphInstance = meshInstances[m].morphInstance;
+                    if (!morphInstance) continue;
+                    morphInstance.setWeight(this.targetProp, value);
+                }
             }
         }
     };
@@ -1897,8 +1918,8 @@ Object.assign(window, function () {
 
             // ctrl-drag target root is specified as "model"
             // link targetNode to root properly
-            if (curve.animTargets[0].targetNode === "model")
-                curve.animTargets[0].targetNode = root;
+            if (curve.animTargets[0].targetPath === "weights")
+                curve.animTargets[0].updateMorphTarget(root);
 
             var ctarget = curve.animTargets[0];
             var atarget = dictTarget[ctarget.targetNode.name];

@@ -167,8 +167,8 @@ Viewer.prototype = {
                 for (i = 0; i < animationClips.length; i++) {
                     for(var c = 0; c < animationClips[i].animCurves.length; c++) {
                         var curve = animationClips[i].animCurves[c];
-                        if (curve.animTargets[0].targetNode === "model")
-                            curve.animTargets[0].targetNode = this.gltf;
+                        if (curve.animTargets[0].targetPath === "weights")
+                            curve.animTargets[0].updateMorphTarget(this.gltf);
                     }
                 }
             }
